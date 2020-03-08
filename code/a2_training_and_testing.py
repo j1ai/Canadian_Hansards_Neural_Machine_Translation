@@ -65,12 +65,15 @@ def train_for_epoch(model, dataloader, optimizer, device):
     # If you are running into CUDA memory errors part way through training,
     # try "del F, F_lens, E, logits, loss" at the end of each iteration of
     # the loop.
-    criterion = torch.nn.CrossEntropyLoss(igore_index = model.target_eos)
+    criterion = torch.nn.CrossEntropyLoss()
     total_loss = 0
     iteration = 0
+    criterion = criterion.to(device)
+    model = model.to(device)
     for F, F_lens, E in tqdm(dataloader):
         #Sends ``F`` to the appropriate device via ``F = F.to(device)``. Same
         #for ``F_lens`` and ``E``.
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         F = F.to(device)
         F_lens = F_lens.to(device)
         E = E.to(device)
@@ -79,17 +82,19 @@ def train_for_epoch(model, dataloader, optimizer, device):
         optimizer.zero_grad()
         #Calls ``logits = model(F, F_lens, E)`` to determine next-token probabilities.
         logits = model(F, F_lens, E)
+        logits = logits.to(device)
 
         #Modifies ``E`` for the loss function, getting rid of a token and
         #replacing excess end-of-sequence tokens with padding using
         #``model.get_target_padding_mask()`` and ``torch.masked_fill
-        E = model.get_target_padding_mask(E)
-        torch.masked_fill(E, 0)
+        padding_mask = model.get_target_padding_mask(E)
+        E = E.masked_fill(padding_mask, model.target_eos)
 
         #Flattens out the sequence dimension into the batch dimension of both
         #``logits`` and ``E``
-        logits = torch.flatten(logits, start_dim = 0)
-        E = torch.flatten(E, start_dim = 0)
+        logits = logits.view(-1, logits.size()[-1])  # (T-1, N, V) -> ((T-1)*N, V)
+        E = E.transpose(0, 1)
+        E = E[:, 1:].reshape(-1)  # target,  (N, T) -> ((T-1)*N, 1)
 
         loss = criterion(logits, E)
         iteration += 1
@@ -98,6 +103,8 @@ def train_for_epoch(model, dataloader, optimizer, device):
         optimizer.step()
         del F, F_lens, E, logits, loss
     avg_loss = total_loss / iteration
+    print("Average Loss: " + avg_loss)
+    print("Number of batches: " + iteration)
     return avg_loss
 
 

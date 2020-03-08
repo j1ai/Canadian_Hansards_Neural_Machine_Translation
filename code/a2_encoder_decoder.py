@@ -27,7 +27,7 @@ class Encoder(EncoderBase):
             self.rnn = torch.nn.GRU(self.word_embedding_size, self.hidden_state_size, self.num_hidden_layers, dropout = self.dropout, bidirectional = True)
         elif self.cell_type == 'rnn':
             self.rnn = torch.nn.RNN(self.word_embedding_size, self.hidden_state_size, self.num_hidden_layers, dropout = self.dropout, bidirectional = True)
-            
+
     def get_all_rnn_inputs(self, F):
         # compute input vectors for each source transcription.
         # F is shape (S, N)
@@ -43,7 +43,7 @@ class Encoder(EncoderBase):
         # h (output) is of shape (S, N, 2 * H)
         # relevant pytorch modules:
         # torch.nn.utils.rnn.{pad_packed,pack_padded}_sequence
-        packed_embedded = torch.nn.utils.rnn.pack_padded_sequence(x, F_lens)
+        packed_embedded = torch.nn.utils.rnn.pack_padded_sequence(x, F_lens, enforce_sorted=False)
         #packed_outputs is a packed sequence containing all hidden states
         #hidden is now from the final non-padded element in the batch
         packed_outputs, hidden = self.rnn(packed_embedded)
@@ -85,6 +85,7 @@ class DecoderWithoutAttention(DecoderBase):
         # relevant pytorch modules: torch.cat
         return torch.cat((
                           # hidden states of the encoder's forward direction at the highest index in time
+
                           h[-1, F_lens, 0:self.hidden_state_size // 2],
                           #hidden states of the encoder's backward direction at time t=0
                           h[0, F_lens, self.hidden_state_size // 2:]), dim = 1).squeeze(1)
@@ -105,8 +106,11 @@ class DecoderWithoutAttention(DecoderBase):
         # xtilde_t is of shape (N, Itilde)
         # htilde_tm1 is of shape (N, 2 * H) or a tuple of two of those (LSTM)
         # htilde_t (output) is of same shape as htilde_tm1
-        _ , hidden = self.cell(xtilde_t, htilde_tm1)
-        return hidden
+        if self.cell_type == 'lstm':
+            cur_hidden_state = self.cell(xtilde_t,(htilde_tm1[0][..., :self.hidden_state_size], htilde_tm1[1][..., :self.hidden_state_size]))
+        else:
+            cur_hidden_state = self.cell(xtilde_t, htilde_tm1[..., :self.hidden_state_size])
+        return cur_hidden_state
 
     def get_current_logits(self, htilde_t):
         # determine un-normalized log-probability distribution over output
@@ -135,17 +139,21 @@ class DecoderWithAttention(DecoderWithoutAttention):
         elif self.cell_type == 'rnn':
             self.cell = torch.nn.RNNCell(self.word_embedding_size + self.hidden_state_size, self.hidden_state_size)
         self.ff = torch.nn.Linear(self.hidden_state_size, self.target_vocab_size)
-        
+
     def get_first_hidden_state(self, h, F_lens):
         # same as before, but initialize to zeros
         # relevant pytorch modules: torch.zeros_like
         # ensure result is on same device as h!
-        return torch.zeros_like(h[0])
+        #first_hidden_state = torch.arange(h.shape[0], device=h.device)
+        return torch.zeros_like(h[0], device=h.device)
 
     def get_current_rnn_input(self, E_tm1, htilde_tm1, h, F_lens):
         # update to account for attention. Use attend() for c_t
+        E_tm1 = E_tm1.to(h.device)
+        htilde_tm1 = htilde_tm1.to(h.device)
+        F_lens = F_lens.to(h.device)
         c_t = self.attend(htilde_tm1, h, F_lens)
-        return torch.cat((self.embedding(E_tm1), c_t))
+        return torch.cat((self.embedding(E_tm1), c_t), device = h.device)
 
     def attend(self, htilde_t, h, F_lens):
         # compute context vector c_t. Use get_attention_weights() to calculate
@@ -154,10 +162,12 @@ class DecoderWithAttention(DecoderWithoutAttention):
         # h is of shape (S, N, 2 * H)
         # F_lens is of shape (N,)
         # c_t (output) is of shape (N, 2 * H)
+        htilde_t = htilde_t.to(h.device)
+        F_lens = F_lens.to(h.device)
         alpha_t = self.get_attention_weights(htilde_t, h, F_lens)
-        c_t = torch.einsum('bij,bi->ij',h,alpha_t)
+        c_t = torch.einsum('bij,bi->ij',h,alpha_t, device = h.device)
         return c_t
-    
+
     def get_attention_weights(self, htilde_t, h, F_lens):
         # DO NOT MODIFY! Calculates attention weights, ensuring padded terms
         # in h have weight 0 and no gradient. You have to implement
@@ -174,7 +184,7 @@ class DecoderWithAttention(DecoderWithoutAttention):
         # htilde_t is of shape (N, 2 * H)
         # h is of shape (S, N, 2 * H)
         # e_t (output) is of shape (S, N)
-        e_t = torch.nn.CosineSimilarity(htilde_t, h, dim=-1)
+        e_t = torch.nn.CosineSimilarity(htilde_t, h, dim=-1, device = h.device)
         return e_t
 
 
@@ -196,7 +206,7 @@ class EncoderDecoder(EncoderDecoderBase):
         self.decoder = decoder_class(self.target_vocab_size, self.target_eos,
                                      self.word_embedding_size, self.encoder_hidden_size,
                                      self.cell_type)
-                                     
+
     def get_logits_for_teacher_forcing(self, h, F_lens, E):
         # get logits over entire E. logits predict the *next* word in the
         # sequence.
