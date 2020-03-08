@@ -73,7 +73,6 @@ def train_for_epoch(model, dataloader, optimizer, device):
     for F, F_lens, E in tqdm(dataloader):
         #Sends ``F`` to the appropriate device via ``F = F.to(device)``. Same
         #for ``F_lens`` and ``E``.
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         F = F.to(device)
         F_lens = F_lens.to(device)
         E = E.to(device)
@@ -103,8 +102,8 @@ def train_for_epoch(model, dataloader, optimizer, device):
         optimizer.step()
         del F, F_lens, E, logits, loss
     avg_loss = total_loss / iteration
-    print("Average Loss: " + avg_loss)
-    print("Number of batches: " + iteration)
+    print("Average Loss: " + str(avg_loss))
+    print("Number of batches: " + str(iteration))
     return avg_loss
 
 
@@ -137,7 +136,11 @@ def compute_batch_total_bleu(E_ref, E_cand, target_sos, target_eos):
     '''
     # you can use E_ref.tolist() to convert the LongTensor to a python list
     # of numbers
-    assert False, "Fill me"
+    total_bleu = 0
+    reference = E_ref.tolist()
+    candidate = E_cand.tolist()
+
+
 
 
 def compute_average_bleu_over_dataset(

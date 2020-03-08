@@ -149,12 +149,11 @@ class DecoderWithAttention(DecoderWithoutAttention):
 
     def get_current_rnn_input(self, E_tm1, htilde_tm1, h, F_lens):
         # update to account for attention. Use attend() for c_t
-        E_tm1 = E_tm1.to(h.device)
-        htilde_tm1 = htilde_tm1.to(h.device)
-        F_lens = F_lens.to(h.device)
-        c_t = self.attend(htilde_tm1, h, F_lens)
-        return torch.cat((self.embedding(E_tm1), c_t), device = h.device)
-
+        if self.cell_type == 'lstm':
+            c_t = self.attend(htilde_tm1[0], h, F_lens)
+        else:
+            c_t = self.attend(htilde_tm1, h, F_lens)
+        return torch.cat((self.embedding(E_tm1), c_t), dim = 1)
     def attend(self, htilde_t, h, F_lens):
         # compute context vector c_t. Use get_attention_weights() to calculate
         # alpha_t.
@@ -162,10 +161,8 @@ class DecoderWithAttention(DecoderWithoutAttention):
         # h is of shape (S, N, 2 * H)
         # F_lens is of shape (N,)
         # c_t (output) is of shape (N, 2 * H)
-        htilde_t = htilde_t.to(h.device)
-        F_lens = F_lens.to(h.device)
         alpha_t = self.get_attention_weights(htilde_t, h, F_lens)
-        c_t = torch.einsum('bij,bi->ij',h,alpha_t, device = h.device)
+        c_t = torch.einsum('bij,bi->ij',h,alpha_t)
         return c_t
 
     def get_attention_weights(self, htilde_t, h, F_lens):
@@ -184,7 +181,9 @@ class DecoderWithAttention(DecoderWithoutAttention):
         # htilde_t is of shape (N, 2 * H)
         # h is of shape (S, N, 2 * H)
         # e_t (output) is of shape (S, N)
-        e_t = torch.nn.CosineSimilarity(htilde_t, h, dim=-1, device = h.device)
+        e_t =  torch.zeros_like(torch.empty(h.shape[0], h.shape[1]), device = h.device)
+        for s in range(h.shape[0]):
+            e_t[s] = torch.nn.functional.cosine_similarity(htilde_t, h[s])
         return e_t
 
 
@@ -204,7 +203,7 @@ class EncoderDecoder(EncoderDecoderBase):
                                      self.word_embedding_size, self.encoder_num_hidden_layers,
                                      self.encoder_hidden_size, self.encoder_dropout, self.cell_type)
         self.decoder = decoder_class(self.target_vocab_size, self.target_eos,
-                                     self.word_embedding_size, self.encoder_hidden_size,
+                                     self.word_embedding_size, self.encoder_hidden_size * 2,
                                      self.cell_type)
 
     def get_logits_for_teacher_forcing(self, h, F_lens, E):
