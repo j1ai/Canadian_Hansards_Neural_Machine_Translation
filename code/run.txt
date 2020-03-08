@@ -1,0 +1,12 @@
+python3.7 a2_run.py vocab /h/u1/cs401/A2/data/Hansard/Training/ e vocab.e.gz
+python3.7 a2_run.py vocab /h/u1/cs401/A2/data/Hansard/Training/ f vocab.f.gz
+
+python3.7 a2_run.py split /h/u1/cs401/A2/data/Hansard/Training/ train.txt.gz dev.txt.gz
+
+python3.7 a2_run.py train /h/u1/cs401/A2/data/Hansard/Training/ vocab.e.gz vocab.f.gz train.txt.gz dev.txt.gz model_wo_att.pt.gz --device cuda
+
+python3.7 a2_run.py train /h/u1/cs401/A2/data/Hansard/Training/ vocab.e.gz vocab.f.gz train.txt.gz dev.txt.gz model_w_att.pt.gz --with-attention --device cuda
+
+python3.7 a2_run.py test /h/u1/cs401/A2/data/Hansard/Testing/ vocab.e.gz vocab.f.gz model_wo_att.pt.gz --device cuda
+
+python3.7 a2_run.py test /h/u1/cs401/A2/data/Hansard/Testing/ vocab.e.gz vocab.f.gz model_w_att.pt.gz --with-attention --device cuda
