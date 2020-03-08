@@ -26,9 +26,8 @@ def grouper(seq, n):
     ngrams : list
     '''
     ngrams = []
-    for i in range(len(seq)):
-        if i + (n-1) < len(seq):
-            ngrams.append(seq[i:i+(n-1)])
+    for i in range(len(seq)-n+1):
+        ngrams.append(seq[i:i+n])
     return ngrams
 
 
@@ -61,7 +60,7 @@ def n_gram_precision(reference, candidate, n):
     for cand_ngram in cand_ngrams:
         if cand_ngram in ref_ngrams:
             count_cand_in_ref += 1
-    return float(count_cand_in_ref) / len(cand_ngrams)
+    return count_cand_in_ref / len(cand_ngrams)
     
     
 
@@ -87,7 +86,7 @@ def brevity_penalty(reference, candidate):
         return 0.0
     ref_length = len(reference)
     cand_length = len(candidate)
-    brevity = float(ref_length) / cand_length
+    brevity = ref_length / cand_length
     if cand_length <= ref_length:
         return exp(1 - brevity)
     else:
