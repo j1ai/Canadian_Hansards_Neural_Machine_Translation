@@ -91,7 +91,7 @@ def train_for_epoch(model, dataloader, optimizer, device):
 
         #Flattens out the sequence dimension into the batch dimension of both
         #``logits`` and ``E``
-        logits = logits.view(-1, logits.size()[-1])  # (T-1, N, V) -> ((T-1)*N, V)
+        logits = torch.reshape()  # (T-1, N, V) -> ((T-1)*N, V)
         E = E.transpose(0, 1)
         E = E[:, 1:].reshape(-1)  # target,  (N, T) -> ((T-1)*N, 1)
 
@@ -139,9 +139,17 @@ def compute_batch_total_bleu(E_ref, E_cand, target_sos, target_eos):
     total_bleu = 0
     reference = E_ref.tolist()
     candidate = E_cand.tolist()
-    for i in range(len(reference)):
-        ref = reference[i].remove(target_eos).remove(target_sos)
-        cand = candidate[i].remove(target_eos).remove(target_sos)
+    for i, j in zip(range(len(reference)), range(len(candidate))):
+        ref = reference[i]
+        cand = candidate[j]
+        if target_sos in ref:
+            ref.remove(target_sos)
+        if target_eos in ref:
+            ref.remove(target_eos)
+        if target_sos in cand:
+            cand.remove(target_sos)
+        if target_eos in cand:
+            cand.remove(target_eos)
         bleu_score = a2_bleu_score.BLEU_score(ref, cand, 4)
         total_bleu += bleu_score
     return total_bleu
