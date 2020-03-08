@@ -20,7 +20,6 @@ class Encoder(EncoderBase):
         # cell_type will be one of: ['lstm', 'gru', 'rnn']
         # relevant pytorch modules:
         # torch.nn.{LSTM, GRU, RNN, Embedding}
-        super().__init__()
         self.embedding = torch.nn.Embedding(self.source_vocab_size, self.word_embedding_size, padding_idx=self.pad_id)
         if self.cell_type == 'lstm':
             self.rnn = torch.nn.LSTM(self.word_embedding_size, self.hidden_state_size, self.num_hidden_layers, dropout = self.dropout, bidirectional = True)
@@ -61,7 +60,6 @@ class DecoderWithoutAttention(DecoderBase):
         # relevant pytorch modules:
         # cell_type will be one of: ['lstm', 'gru', 'rnn']
         # torch.nn.{Embedding,Linear,LSTMCell,RNNCell,GRUCell}
-        super().__init__()
         self.embedding = torch.nn.Embedding(self.target_vocab_size, self.word_embedding_size, padding_idx=self.pad_id)
         if self.cell_type == 'lstm':
             self.cell = torch.nn.LSTMCell(self.word_embedding_size, self.hidden_state_size)
@@ -129,7 +127,6 @@ class DecoderWithAttention(DecoderWithoutAttention):
         # using: self.target_vocab_size, self.word_embedding_size, self.pad_id,
         # self.hidden_state_size, self.cell_type
         # cell_type will be one of: ['lstm', 'gru', 'rnn']
-        super().__init__()
         self.embedding = torch.nn.Embedding(self.target_vocab_size, self.word_embedding_size, padding_idx=self.pad_id)
         if self.cell_type == 'lstm':
             self.cell = torch.nn.LSTMCell(self.word_embedding_size + self.hidden_state_size, self.hidden_state_size)
@@ -197,10 +194,8 @@ class EncoderDecoder(EncoderDecoderBase):
                                      self.word_embedding_size, self.encoder_num_hidden_layers,
                                      self.encoder_hidden_size, self.encoder_dropout, self.cell_type)
         self.decoder = decoder_class(self.target_vocab_size, self.target_eos,
-                                     self.word_embedding_size, self.encoder_hidden_size * 2,
+                                     self.word_embedding_size, self.encoder_hidden_size,
                                      self.cell_type)
-        self.encoder.init_submodules()
-        self.decoder.init_submodules()
                                      
     def get_logits_for_teacher_forcing(self, h, F_lens, E):
         # get logits over entire E. logits predict the *next* word in the
@@ -212,9 +207,9 @@ class EncoderDecoder(EncoderDecoderBase):
         # relevant pytorch modules: torch.{zero_like,stack}
         # hint: recall an LSTM's cell state is always initialized to zero.
         # Note logits sequence dimension is one shorter than E (why?)
-        logits = torch.zeros_like(torch.empty(E.shape[0] - 1, F_lens.shape[0], self.target_vocab_size)
+        logits = torch.zeros_like(torch.empty(E.shape[0] - 1, F_lens.shape[0], self.target_vocab_size))
         #Get first hidden state
-        _ , htilde_tm1 = self.decoder.forward(E[0], None, h, F_lens)
+        _, htilde_tm1 = self.decoder.forward(E[0], None, h, F_lens)
         for time_step in range(1, E.shape[0]):
             logit, htilde_tm1 = self.decoder.forward(E[time_step], htilde_tm1, h, F_lens)
             logits[time_step - 1] = logit
