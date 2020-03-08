@@ -139,7 +139,12 @@ def compute_batch_total_bleu(E_ref, E_cand, target_sos, target_eos):
     total_bleu = 0
     reference = E_ref.tolist()
     candidate = E_cand.tolist()
-
+    for i in range(len(reference)):
+        ref = reference[i].remove(target_eos).remove(target_sos)
+        cand = candidate[i].remove(target_eos).remove(target_sos)
+        bleu_score = a2_bleu_score.BLEU_score(ref, cand, 4)
+        total_bleu += bleu_score
+    return total_bleu
 
 
 
@@ -178,4 +183,19 @@ def compute_average_bleu_over_dataset(
         The total BLEU score summed over all sequences divided by the number of
         sequences
     '''
-    assert False, "Fill me"
+    model = model.to(device)
+    total_bleu_score = 0
+    iterations = 0
+    for F, F_lens, E_ref in tqdm(dataloader):
+        F = F.to(device)
+        F_lens = F_lens.to(device)
+        b_1 = model(F, F_lens)
+        E_cand = b_1[..., 0]
+        total_bleu_score += compute_batch_total_bleu(E_ref, E_cand, target_sos, target_eos)
+        iterations += 1
+    avg_bleu = total_bleu_score / iterations
+    print("Average Loss: " + str(avg_bleu))
+    print("Number of batches: " + str(iterations))
+    return avg_bleu
+
+
