@@ -11,3 +11,13 @@ python3.7 a2_run.py test /h/u1/cs401/A2/data/Hansard/Testing/ vocab.e.gz vocab.f
 
 python3.7 a2_run.py test /h/u1/cs401/A2/data/Hansard/Testing/ vocab.e.gz vocab.f.gz model_w_att.pt.gz --with-attention --device cuda
 
+
+
+export OMP_NUM_THREADS=4 # avoids a libgomp error on teach
+# create an input and output vocabulary of only 100 words
+python3.7 a2_run.py vocab /h/u1/cs401/A2/data/Hansard/Training/ e vocab_tiny.e.gz --max-vocab 100
+python3.7 a2_run.py vocab /h/u1/cs401/A2/data/Hansard/Training/ f vocab_tiny.f.gz --max-vocab 100
+# only use the proceedings of 4 meetings, 3 for training and 1 for dev
+python3.7 a2_run.py split /h/u1/cs401/A2/data/Hansard/Training/ train_tiny.txt.gz dev_tiny.txt.gz --limit 4
+# use far fewer parameters in your model
+python3.7 a2_run.py train /h/u1/cs401/A2/data/Hansard/Training/ vocab_tiny.e.gz vocab_tiny.f.gz train_tiny.txt.gz dev_tiny.txt.gz model.pt.gz --epochs 2 --word-embedding-size 51 --encoder-hidden-size 101 --batch-size 5 --cell-type gru --beam-width 1
