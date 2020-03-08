@@ -25,7 +25,11 @@ def grouper(seq, n):
     -------
     ngrams : list
     '''
-    assert False, "Fill me"
+    ngrams = []
+    for i in range(len(seq)):
+        if i + (n-1) < len(seq):
+            ngrams.append(seq[i:i+(n-1)])
+    return ngrams
 
 
 def n_gram_precision(reference, candidate, n):
@@ -47,7 +51,19 @@ def n_gram_precision(reference, candidate, n):
         The n-gram precision. In the case that the candidate has length 0,
         `p_n` is 0.
     '''
-    assert False, "Fill me"
+    if len(candidate) == 0:
+        return 0.0
+    ref_ngrams = grouper(reference, n)
+    cand_ngrams = grouper(candidate, n)
+    #No capping from tutorial slides
+    #Only 1 reference and 1 candidate at a time based on tutorial slides
+    count_cand_in_ref = 0
+    for cand_ngram in cand_ngrams:
+        if cand_ngram in ref_ngrams:
+            count_cand_in_ref += 1
+    return float(count_cand_in_ref) / len(cand_ngrams)
+    
+    
 
 
 def brevity_penalty(reference, candidate):
@@ -67,7 +83,15 @@ def brevity_penalty(reference, candidate):
         The brevity penalty. In the case that the candidate transcription is
         of 0 length, `BP` is 0.
     '''
-    assert False, "Fill me"
+    if len(candidate) == 0:
+        return 0.0
+    ref_length = len(reference)
+    cand_length = len(candidate)
+    brevity = float(ref_length) / cand_length
+    if cand_length <= ref_length:
+        return exp(1 - brevity)
+    else:
+        return 1.0
 
 
 def BLEU_score(reference, hypothesis, n):
@@ -90,4 +114,10 @@ def BLEU_score(reference, hypothesis, n):
     bleu : float
         The BLEU score
     '''
-    assert False, "Fill me"
+    brevity = brevity_penalty(reference, hypothesis)
+    n_gram_precisions = 1
+    for num in range(1,n+1):
+        n_gram_precisions = n_gram_precisions * n_gram_precision(reference, hypothesis, num)
+    return brevity * (n_gram_precisions ** (1/n))
+        
+    
