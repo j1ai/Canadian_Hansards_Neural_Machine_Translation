@@ -91,7 +91,7 @@ def train_for_epoch(model, dataloader, optimizer, device):
 
         #Flattens out the sequence dimension into the batch dimension of both
         #``logits`` and ``E``
-        logits = torch.reshape()  # (T-1, N, V) -> ((T-1)*N, V)
+        logits = logits.view(-1, logits.size()[2])  # (T-1, N, V) -> ((T-1)*N, V)
         E = E.transpose(0, 1)
         E = E[:, 1:].reshape(-1)  # target,  (N, T) -> ((T-1)*N, 1)
 

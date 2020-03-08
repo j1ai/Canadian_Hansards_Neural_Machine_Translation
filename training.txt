@@ -1,0 +1,27 @@
+python3.7 a2_run.py train /h/u1/cs401/A2/data/Hansard/Training/ vocab.e.gz vocab.f.gz train.txt.gz dev.txt.gz model_wo_att.pt.gz --device cuda --beam-width 1
+100%|███████████████████████████████████████| 2778/2778 [18:18<00:00,  2.53it/s]
+Average Loss: tensor(4.1869, device='cuda:0', grad_fn=<DivBackward0>)
+Number of batches: 2778
+100%|█████████████████████████████████████████| 328/328 [00:03<00:00, 90.40it/s]
+Average Loss: 1.0
+Number of batches: 328
+Epoch 1: loss=4.186910152435303, BLEU=1.0
+
+
+
+python3.7 a2_run.py train /h/u1/cs401/A2/data/Hansard/Training/ vocab.e.gz vocab.f.gz train.txt.gz dev.txt.gz model_wo_att.pt.gz --device cuda --beam-width 1
+100%|███████████████████████████████████████| 2778/2778 [18:18<00:00,  2.53it/s]
+Average Loss: tensor(4.1869, device='cuda:0', grad_fn=<DivBackward0>)
+Number of batches: 2778
+100%|█████████████████████████████████████████| 328/328 [00:03<00:00, 90.40it/s]
+Average Loss: 1.0
+Number of batches: 328
+Epoch 1: loss=4.186910152435303, BLEU=1.0
+100%|███████████████████████████████████████| 2778/2778 [18:28<00:00,  2.51it/s]
+Average Loss: tensor(4.1594, device='cuda:0', grad_fn=<DivBackward0>)
+Number of batches: 2778
+100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 328/328 [00:04<00:00, 81.85it/s]
+Average Loss: 1.0
+Number of batches: 328
+Epoch 2: loss=4.159368515014648, BLEU=1.0
+
