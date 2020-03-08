@@ -212,7 +212,13 @@ class EncoderDecoder(EncoderDecoderBase):
         # relevant pytorch modules: torch.{zero_like,stack}
         # hint: recall an LSTM's cell state is always initialized to zero.
         # Note logits sequence dimension is one shorter than E (why?)
-        assert False, "Fill me"
+        logits = torch.zeros_like(torch.empty(E.shape[0] - 1, F_lens.shape[0], self.target_vocab_size)
+        #Get first hidden state
+        _ , htilde_tm1 = self.decoder.forward(E[0], None, h, F_lens)
+        for time_step in range(1, E.shape[0]):
+            logit, htilde_tm1 = self.decoder.forward(E[time_step], htilde_tm1, h, F_lens)
+            logits[time_step - 1] = logit
+        return logits
 
     def update_beam(self, htilde_t, b_tm1_1, logpb_tm1, logpy_t):
         # perform the operations within the psuedo-code's loop in the
@@ -230,4 +236,14 @@ class EncoderDecoder(EncoderDecoderBase):
         # torch.{flatten,topk,unsqueeze,expand_as,gather,cat}
         # hint: if you flatten a two-dimensional array of shape z of (A, B),
         # then the element z[a, b] maps to z'[a*B + b]
-        assert False, "Fill me"
+        assert self.beam_width == 1, "Greedy requires beam width of 1"
+        extensions_t = (logpb_tm1.unsqueeze(-1) + logpy_t).squeeze(1)  # (N, V)
+        logpb_t, v = extensions_t.max(1)  # (N,), (N,)
+        logpb_t = logpb_t.unsqueeze(-1)  # (N, 1) == (N, K)
+        # v indexes the maximal element in dim=1 of extensions_t that was
+        # chosen, which equals the token index v in k -> v
+        v = v.unsqueeze(0).unsqueeze(-1)  # (1, N, 1) == (1, N, K)
+        b_t_1 = torch.cat([b_tm1_1, v], dim=0)
+        # For greedy search, all paths come from the same prefix, so
+        b_t_0 = htilde_t
+        return b_t_0, b_t_1, logpb_t
