@@ -34,7 +34,7 @@ def train_for_epoch(model, dataloader, optimizer, device):
        6. Calls ``loss = loss_fn(logits, E)`` to calculate the batch loss
        7. Calls ``loss.backward()`` to backpropagate gradients through
           ``model``
-       8. Calls ``optim.step()`` to update model parameters
+       8. Calls ``optimizer.step()`` to update model parameters
     3. Returns the average loss over sequences
 
     Parameters
@@ -66,7 +66,44 @@ def train_for_epoch(model, dataloader, optimizer, device):
     # try "del F, F_lens, E, logits, loss" at the end of each iteration of
     # the loop.
     criterion = torch.nn.CrossEntropyLoss(igore_index = model.target_eos)
-    
+    total_loss = 0
+    iteration = 0
+    for F, F_lens, E in tqdm(dataloader):
+        #Sends ``F`` to the appropriate device via ``F = F.to(device)``. Same
+        #for ``F_lens`` and ``E``.
+        F = F.to(device)
+        F_lens = F_lens.to(device)
+        E = E.to(device)
+
+        #Zeros out the model's previous gradient with ``optimizer.zero_grad()``
+        optimizer.zero_grad()
+        #Calls ``logits = model(F, F_lens, E)`` to determine next-token probabilities.
+        logits = model(F, F_lens, E)
+
+        #Modifies ``E`` for the loss function, getting rid of a token and
+        #replacing excess end-of-sequence tokens with padding using
+        #``model.get_target_padding_mask()`` and ``torch.masked_fill
+        E = model.get_target_padding_mask(E)
+        torch.masked_fill(E, 0)
+
+        #Flattens out the sequence dimension into the batch dimension of both
+        #``logits`` and ``E``
+        logits = torch.flatten(logits, start_dim = 0)
+        E = torch.flatten(E, start_dim = 0)
+
+        loss = criterion(logits, E)
+        iteration += 1
+        total_loss += loss
+        loss.backward()
+        optimizer.step()
+        del F, F_lens, E, logits, loss
+    avg_loss = total_loss / iteration
+    return avg_loss
+
+
+
+
+
 
 
 def compute_batch_total_bleu(E_ref, E_cand, target_sos, target_eos):
