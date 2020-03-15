@@ -65,7 +65,7 @@ def train_for_epoch(model, dataloader, optimizer, device):
     # If you are running into CUDA memory errors part way through training,
     # try "del F, F_lens, E, logits, loss" at the end of each iteration of
     # the loop.
-    criterion = torch.nn.CrossEntropyLoss()
+    criterion = torch.nn.CrossEntropyLoss(ignore_index = model.target_vocab_size)
     total_loss = 0
     iteration = 0
     criterion = criterion.to(device)
@@ -81,19 +81,19 @@ def train_for_epoch(model, dataloader, optimizer, device):
         optimizer.zero_grad()
         #Calls ``logits = model(F, F_lens, E)`` to determine next-token probabilities.
         logits = model(F, F_lens, E)
-        logits = logits.to(device)
+        #logits = logits.to(device)
 
         #Modifies ``E`` for the loss function, getting rid of a token and
         #replacing excess end-of-sequence tokens with padding using
         #``model.get_target_padding_mask()`` and ``torch.masked_fill
         padding_mask = model.get_target_padding_mask(E)
-        E = E.masked_fill(padding_mask, model.target_eos)
+        E = E.masked_fill(padding_mask, model.target_vocab_size)
 
         #Flattens out the sequence dimension into the batch dimension of both
         #``logits`` and ``E``
-        logits = logits.view(-1, logits.size()[2])  # (T-1, N, V) -> ((T-1)*N, V)
-        E = E.transpose(0, 1)
-        E = E[:, 1:].reshape(-1)  # target,  (N, T) -> ((T-1)*N, 1)
+        logits = torch.flatten(logits, 0, -2)
+        E = torch.flatten(E[1:], 0)
+        #E = torch.flatten(E, 0)
 
         loss = criterion(logits, E)
         iteration += 1
@@ -102,8 +102,8 @@ def train_for_epoch(model, dataloader, optimizer, device):
         optimizer.step()
         del F, F_lens, E, logits, loss
     avg_loss = total_loss / iteration
-    print("Average Loss: " + str(avg_loss))
-    print("Number of batches: " + str(iteration))
+    #print("Average Loss: " + str(avg_loss))
+    #print("Number of batches: " + str(iteration))
     return avg_loss
 
 
@@ -142,15 +142,29 @@ def compute_batch_total_bleu(E_ref, E_cand, target_sos, target_eos):
     for i, j in zip(range(len(reference)), range(len(candidate))):
         ref = reference[i]
         cand = candidate[j]
-        if target_sos in ref:
-            ref.remove(target_sos)
-        if target_eos in ref:
-            ref.remove(target_eos)
-        if target_sos in cand:
-            cand.remove(target_sos)
-        if target_eos in cand:
-            cand.remove(target_eos)
-        bleu_score = a2_bleu_score.BLEU_score(ref, cand, 4)
+        str_ref = []
+        str_cand = []
+        str_target_eos = str(target_eos)
+        str_target_sos = str(target_sos)
+        for s in ref:
+            str_ref.append(str(s))
+        for s in cand:
+            str_cand.append(str(s))
+        #print("cand Length" + str(len(str_cand)))
+        #print(str_cand)
+        #print("ref Length" + str(len(str_ref)))
+        if str_target_sos in str_ref:
+            str_ref.remove(str_target_sos)
+
+        if str_target_eos in str_ref:
+            str_ref.remove(str_target_eos)
+
+        if str_target_sos in str_cand:
+            str_cand.remove(str_target_sos)
+
+        if str_target_eos in str_cand:
+            str_cand.remove(str_target_eos)
+        bleu_score = a2_bleu_score.BLEU_score(str_ref, str_cand, 4)
         total_bleu += bleu_score
     return total_bleu
 
@@ -201,9 +215,9 @@ def compute_average_bleu_over_dataset(
         E_cand = b_1[..., 0]
         total_bleu_score += compute_batch_total_bleu(E_ref, E_cand, target_sos, target_eos)
         iterations += 1
-    avg_bleu = total_bleu_score / iterations
-    print("Average Loss: " + str(avg_bleu))
-    print("Number of batches: " + str(iterations))
+    avg_bleu = total_bleu_score / (iterations * 100)
+    #print("Average Bleu Score: " + str(avg_bleu))
+    #print("Number of batches: " + str(iterations))
     return avg_bleu
 
 

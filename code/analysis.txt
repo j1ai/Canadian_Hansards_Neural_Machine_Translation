@@ -1,0 +1,64 @@
+I have implemented the greedy search in update_beam and the following outputs are the the printouts from every epoch of the training loop of both the model without attention and with attention.
+
+-- Training Loop for Without Attention
+python3.7 a2_run.py train /h/u1/cs401/A2/data/Hansard/Training/ vocab.e.gz vocab.f.gz train.txt.gz dev.txt.gz model_wo_att.pt.gz --device cuda --beam-width 1
+100%|███████████████████████████████████████| 2778/2778 [06:21<00:00,  7.28it/s]
+100%|█████████████████████████████████████████| 328/328 [01:22<00:00,  4.00it/s]
+Epoch 1: loss=0.23202472925186157, BLEU=0.08945621431204316
+100%|███████████████████████████████████████| 2778/2778 [06:21<00:00,  7.28it/s]
+100%|█████████████████████████████████████████| 328/328 [01:23<00:00,  3.94it/s]
+Epoch 2: loss=0.002527248580008745, BLEU=0.023009255743398276
+100%|███████████████████████████████████████| 2778/2778 [06:21<00:00,  7.28it/s]
+100%|█████████████████████████████████████████| 328/328 [01:23<00:00,  3.94it/s]
+Epoch 3: loss=0.00019477226305752993, BLEU=0.010096944307905678
+100%|███████████████████████████████████████| 2778/2778 [06:21<00:00,  7.28it/s]
+100%|█████████████████████████████████████████| 328/328 [01:23<00:00,  3.93it/s]
+Epoch 4: loss=4.901146166957915e-05, BLEU=0.010130868074967651
+100%|███████████████████████████████████████| 2778/2778 [06:21<00:00,  7.28it/s]
+100%|█████████████████████████████████████████| 328/328 [01:23<00:00,  3.94it/s]
+Epoch 5: loss=1.4375837054103613e-06, BLEU=0.02341608388112518
+Finished 5 epochs
+
+--Training Loop for With Attention
+python3.7 a2_run.py train /h/u1/cs401/A2/data/Hansard/Training/ vocab.e.gz vocab.f.gz train.txt.gz dev.txt.gz model_w_att.pt.gz --with-attention --device cuda --beam-width 1
+100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2778/2778 [10:42<00:00,  4.33it/s]
+100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 328/328 [02:38<00:00,  2.07it/s]
+Epoch 1: loss=0.2165020853281021, BLEU=0.010036648290247939
+100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2778/2778 [10:44<00:00,  4.31it/s]
+100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 328/328 [02:39<00:00,  2.05it/s]
+Epoch 2: loss=0.0025182573590427637, BLEU=0.010017657504185654
+100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2778/2778 [10:51<00:00,  4.26it/s]
+100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 328/328 [02:41<00:00,  2.03it/s]
+Epoch 3: loss=5.5301581596722826e-05, BLEU=0.01007788018348016
+100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2778/2778 [10:55<00:00,  4.24it/s]
+100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 328/328 [02:49<00:00,  1.94it/s]
+Epoch 4: loss=6.581895377166802e-06, BLEU=0.010095383906216105
+100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2778/2778 [10:58<00:00,  4.22it/s]
+100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 328/328 [03:01<00:00,  1.80it/s]
+Epoch 5: loss=1.7826249631980318e-06, BLEU=0.010092446892290679
+Finished 5 epochs
+
+
+
+-- Average BLEU Score on the Test Set for Model Without Attention
+b3185-12:~/CSC401/Canadian_Hansards_Neural_Machine_Translation/code%
+python3.7 a2_run.py test /h/u1/cs401/A2/data/Hansard/Testing/ vocab.e.gz vocab.f.gz model_wo_att.pt.gz --device cuda --beam-width 1
+100%|█████████████████████████████████████████| 490/490 [03:39<00:00,  2.23it/s]
+The average BLEU score over the test set was 0.03122187326
+
+
+-- Average BLEU Score on the Test Set for Model With Attention
+b3185-12:~/CSC401/Canadian_Hansards_Neural_Machine_Translation/code%
+python3.7 a2_run.py test /h/u1/cs401/A2/data/Hansard/Testing/ vocab.e.gz vocab.f.gz model_w_att.pt.gz --with-attention --device cuda --beam-width 1
+100%|█████████████████████████████████████████| 490/490 [03:39<00:00,  2.23it/s]
+The average BLEU score over the test set was 0.010049470776113498
+
+Overall, both model have significantly reduced their training loss as they loop through their epochs, but the BLEU score in the training for 
+the model without attention varies a lot. On the other hand, the BLEU score for the training of the model with attention remains consistent over the 5 epochs.
+The testing score for the model with attention seems to be lower than the one without attention. I think this
+is because of some of the training parameters are not being set properly to allow the model with attention to converge properly
+which causes the model with attention fail to predict the next word. I think if we increase the dropout rate, both models
+will be trained more accurately, as the Adam optimizer might perform better with the training data, as the encoder is more
+likely to drop inaccurately embedded hidden state. With this improvement, I believe the training model with attention
+will perform better than the without attention model, as it will take more advantage of the context vector and the previous
+hidden state.

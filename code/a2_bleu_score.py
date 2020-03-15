@@ -52,6 +52,8 @@ def n_gram_precision(reference, candidate, n):
     '''
     if len(candidate) == 0:
         return 0.0
+    if len(candidate) < n:
+        return 0.0
     ref_ngrams = grouper(reference, n)
     cand_ngrams = grouper(candidate, n)
     #No capping from tutorial slides

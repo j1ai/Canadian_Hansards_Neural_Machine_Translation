@@ -48,6 +48,7 @@ class Encoder(EncoderBase):
         #hidden is now from the final non-padded element in the batch
         packed_outputs, hidden = self.rnn(packed_embedded)
         outputs, _ = torch.nn.utils.rnn.pad_packed_sequence(packed_outputs, padding_value = h_pad)
+
         return outputs
 
 class DecoderWithoutAttention(DecoderBase):
@@ -85,10 +86,9 @@ class DecoderWithoutAttention(DecoderBase):
         # relevant pytorch modules: torch.cat
         return torch.cat((
                           # hidden states of the encoder's forward direction at the highest index in time
-
-                          h[-1, F_lens, 0:self.hidden_state_size // 2],
+                          h[..., 0:self.hidden_state_size // 2][-1],
                           #hidden states of the encoder's backward direction at time t=0
-                          h[0, F_lens, self.hidden_state_size // 2:]), dim = 1).squeeze(1)
+                          h[..., self.hidden_state_size // 2:][0]), dim = 1)
 
     def get_current_rnn_input(self, E_tm1, htilde_tm1, h, F_lens):
         # determine the input to the rnn for *just* the current time step.
@@ -106,11 +106,7 @@ class DecoderWithoutAttention(DecoderBase):
         # xtilde_t is of shape (N, Itilde)
         # htilde_tm1 is of shape (N, 2 * H) or a tuple of two of those (LSTM)
         # htilde_t (output) is of same shape as htilde_tm1
-        if self.cell_type == 'lstm':
-            cur_hidden_state = self.cell(xtilde_t,(htilde_tm1[0][..., :self.hidden_state_size], htilde_tm1[1][..., :self.hidden_state_size]))
-        else:
-            cur_hidden_state = self.cell(xtilde_t, htilde_tm1[..., :self.hidden_state_size])
-        return cur_hidden_state
+        return self.cell(xtilde_t, htilde_tm1)
 
     def get_current_logits(self, htilde_t):
         # determine un-normalized log-probability distribution over output
@@ -145,7 +141,7 @@ class DecoderWithAttention(DecoderWithoutAttention):
         # relevant pytorch modules: torch.zeros_like
         # ensure result is on same device as h!
         #first_hidden_state = torch.arange(h.shape[0], device=h.device)
-        return torch.zeros_like(h[0], device=h.device)
+        return torch.zeros_like(h[-1], device=h.device)
 
     def get_current_rnn_input(self, E_tm1, htilde_tm1, h, F_lens):
         # update to account for attention. Use attend() for c_t
@@ -183,7 +179,8 @@ class DecoderWithAttention(DecoderWithoutAttention):
         # e_t (output) is of shape (S, N)
         e_t =  torch.zeros_like(torch.empty(h.shape[0], h.shape[1]), device = h.device)
         for s in range(h.shape[0]):
-            e_t[s] = torch.nn.functional.cosine_similarity(htilde_t, h[s])
+            #e_t = torch.nn.CosineSimilarity(htilde_t, h, dim=-1)
+            e_t[s] = torch.nn.functional.cosine_similarity(h[s], htilde_t)
         return e_t
 
 
@@ -216,12 +213,15 @@ class EncoderDecoder(EncoderDecoderBase):
         # relevant pytorch modules: torch.{zero_like,stack}
         # hint: recall an LSTM's cell state is always initialized to zero.
         # Note logits sequence dimension is one shorter than E (why?)
-        logits = torch.zeros_like(torch.empty(E.shape[0] - 1, F_lens.shape[0], self.target_vocab_size))
+        #logits = torch.zeros_like(torch.empty(E.shape[0] - 1, F_lens.shape[0], self.target_vocab_size))
         #Get first hidden state
-        _, htilde_tm1 = self.decoder.forward(E[0], None, h, F_lens)
+        logits = []
+        logit, htilde_tm1 = self.decoder.forward(E[0], None, h, F_lens)
+        #logits.append(logit)
         for time_step in range(1, E.shape[0]):
             logit, htilde_tm1 = self.decoder.forward(E[time_step], htilde_tm1, h, F_lens)
-            logits[time_step - 1] = logit
+            logits.append(logit)
+        logits = torch.stack(logits, 0)
         return logits
 
     def update_beam(self, htilde_t, b_tm1_1, logpb_tm1, logpy_t):
